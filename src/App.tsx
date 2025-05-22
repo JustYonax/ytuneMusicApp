@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Music, List } from 'lucide-react';
+import { Music, List, Download } from 'lucide-react';
 
 // Components
 import SearchBar from './components/SearchBar';
@@ -8,6 +8,7 @@ import VideoPlayer from './components/VideoPlayer';
 import PlaylistDrawer from './components/PlaylistDrawer';
 import ThemeToggle from './components/ThemeToggle';
 import GenreMenu from './components/GenreMenu';
+import OfflineMusic from './components/OfflineMusic';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
@@ -39,6 +40,7 @@ function App() {
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [miniPlayerMode, setMiniPlayerMode] = useState(false);
+  const [showOfflineMusic, setShowOfflineMusic] = useState(false);
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
@@ -71,6 +73,8 @@ function App() {
     searchVideos(genre);
   };
 
+  const offlinePlaylist = playlists.find(p => p.id === 'offline');
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       {/* Header */}
@@ -84,6 +88,17 @@ function App() {
           </div>
           
           <div className="flex items-center space-x-3">
+            <button
+              onClick={() => setShowOfflineMusic(!showOfflineMusic)}
+              className={`p-2 rounded-full transition-colors ${
+                showOfflineMusic 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+              }`}
+              title="Downloaded Music"
+            >
+              <Download size={18} />
+            </button>
             <ThemeToggle />
             <button 
               onClick={handleTogglePlaylistDrawer}
@@ -99,52 +114,66 @@ function App() {
       </header>
       
       {/* Search Section */}
-      <section className="py-8 bg-gradient-to-b from-purple-600 to-indigo-700 dark:from-purple-900 dark:to-indigo-900">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-2xl font-bold text-white mb-6">Find Your Favorite Music</h2>
-          <div className="mx-auto max-w-xl mb-6">
-            <SearchBar onSearch={searchVideos} isLoading={isLoading} />
+      {!showOfflineMusic && (
+        <section className="py-8 bg-gradient-to-b from-purple-600 to-indigo-700 dark:from-purple-900 dark:to-indigo-900">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-2xl font-bold text-white mb-6">Find Your Favorite Music</h2>
+            <div className="mx-auto max-w-xl mb-6">
+              <SearchBar onSearch={searchVideos} isLoading={isLoading} />
+            </div>
+            <GenreMenu 
+              genres={genres}
+              selectedGenre={selectedGenre}
+              onGenreSelect={handleGenreSelect}
+            />
           </div>
-          <GenreMenu 
-            genres={genres}
-            selectedGenre={selectedGenre}
-            onGenreSelect={handleGenreSelect}
-          />
-        </div>
-      </section>
+        </section>
+      )}
       
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {error && (
-          <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-300">
-            {error}
-          </div>
-        )}
-        
-        {selectedGenre && (
-          <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
-            {selectedGenre} Tracks
-          </h2>
-        )}
-        
-        {/* Video Grid */}
-        {results.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {results.map(video => (
-              <VideoCard
-                key={video.id}
-                video={video}
-                onPlay={handlePlayVideo}
-                onAddToPlaylist={() => setIsPlaylistOpen(true) || setCurrentVideo(video)}
-              />
-            ))}
-          </div>
-        ) : !isLoading && !error && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 dark:text-gray-400">
-              No results found. Try searching for something else.
-            </p>
-          </div>
+        {showOfflineMusic ? (
+          offlinePlaylist && (
+            <OfflineMusic
+              playlist={offlinePlaylist}
+              onPlay={handlePlayFromPlaylist}
+              onRemove={removeFromPlaylist}
+            />
+          )
+        ) : (
+          <>
+            {error && (
+              <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-300">
+                {error}
+              </div>
+            )}
+            
+            {selectedGenre && (
+              <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
+                {selectedGenre} Tracks
+              </h2>
+            )}
+            
+            {/* Video Grid */}
+            {results.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {results.map(video => (
+                  <VideoCard
+                    key={video.id}
+                    video={video}
+                    onPlay={handlePlayVideo}
+                    onAddToPlaylist={() => setIsPlaylistOpen(true) || setCurrentVideo(video)}
+                  />
+                ))}
+              </div>
+            ) : !isLoading && !error && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No results found. Try searching for something else.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </main>
       
