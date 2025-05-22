@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Music, List, Download } from 'lucide-react';
+import { Music, List, Download, Home } from 'lucide-react';
 
 // Components
 import SearchBar from './components/SearchBar';
@@ -9,6 +9,7 @@ import PlaylistDrawer from './components/PlaylistDrawer';
 import ThemeToggle from './components/ThemeToggle';
 import GenreMenu from './components/GenreMenu';
 import OfflineMusic from './components/OfflineMusic';
+import PlaylistScreen from './components/PlaylistScreen';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
@@ -41,6 +42,8 @@ function App() {
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [miniPlayerMode, setMiniPlayerMode] = useState(false);
   const [showOfflineMusic, setShowOfflineMusic] = useState(false);
+  const [showPlaylistScreen, setShowPlaylistScreen] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<'home' | 'offline' | 'playlists'>('home');
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
@@ -64,13 +67,15 @@ function App() {
     setMiniPlayerMode(false);
   };
 
-  const handleTogglePlaylistDrawer = () => {
-    setIsPlaylistOpen(!isPlaylistOpen);
-  };
-
   const handleGenreSelect = (genre: string) => {
     setSelectedGenre(genre);
     searchVideos(genre);
+  };
+
+  const navigateTo = (screen: 'home' | 'offline' | 'playlists') => {
+    setCurrentScreen(screen);
+    setShowOfflineMusic(screen === 'offline');
+    setShowPlaylistScreen(screen === 'playlists');
   };
 
   const offlinePlaylist = playlists.find(p => p.id === 'offline');
@@ -89,32 +94,45 @@ function App() {
           
           <div className="flex items-center space-x-3">
             <button
-              onClick={() => setShowOfflineMusic(!showOfflineMusic)}
+              onClick={() => navigateTo('home')}
               className={`p-2 rounded-full transition-colors ${
-                showOfflineMusic 
-                  ? 'bg-purple-600 text-white' 
+                currentScreen === 'home'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+              }`}
+              title="Home"
+            >
+              <Home size={18} />
+            </button>
+            <button
+              onClick={() => navigateTo('offline')}
+              className={`p-2 rounded-full transition-colors ${
+                currentScreen === 'offline'
+                  ? 'bg-purple-600 text-white'
                   : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
               }`}
               title="Downloaded Music"
             >
               <Download size={18} />
             </button>
-            <ThemeToggle />
-            <button 
-              onClick={handleTogglePlaylistDrawer}
-              className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors relative"
+            <button
+              onClick={() => navigateTo('playlists')}
+              className={`p-2 rounded-full transition-colors ${
+                currentScreen === 'playlists'
+                  ? 'bg-purple-600 text-white'
+                  : 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200'
+              }`}
+              title="Playlists"
             >
               <List size={18} />
-              {playlists.some(p => p.items.length > 0) && (
-                <span className="absolute top-0 right-0 w-2 h-2 bg-purple-600 rounded-full"></span>
-              )}
             </button>
+            <ThemeToggle />
           </div>
         </div>
       </header>
       
       {/* Search Section */}
-      {!showOfflineMusic && (
+      {currentScreen === 'home' && (
         <section className="py-8 bg-gradient-to-b from-purple-600 to-indigo-700 dark:from-purple-900 dark:to-indigo-900">
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-2xl font-bold text-white mb-6">Find Your Favorite Music</h2>
@@ -132,15 +150,25 @@ function App() {
       
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
-        {showOfflineMusic ? (
-          offlinePlaylist && (
-            <OfflineMusic
-              playlist={offlinePlaylist}
-              onPlay={handlePlayFromPlaylist}
-              onRemove={removeFromPlaylist}
-            />
-          )
-        ) : (
+        {currentScreen === 'offline' && offlinePlaylist && (
+          <OfflineMusic
+            playlist={offlinePlaylist}
+            onPlay={handlePlayFromPlaylist}
+            onRemove={removeFromPlaylist}
+          />
+        )}
+        
+        {currentScreen === 'playlists' && (
+          <PlaylistScreen
+            playlists={playlists}
+            onCreatePlaylist={createPlaylist}
+            onDeletePlaylist={deletePlaylist}
+            onRemoveFromPlaylist={removeFromPlaylist}
+            onPlayItem={handlePlayFromPlaylist}
+          />
+        )}
+        
+        {currentScreen === 'home' && (
           <>
             {error && (
               <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-300">
