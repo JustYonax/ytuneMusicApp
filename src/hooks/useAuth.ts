@@ -149,6 +149,27 @@ export function useAuth() {
     await fetchUserProfile(user.id);
   };
 
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) throw new Error('No user logged in');
+
+    // First verify the current password
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Update the password
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+  };
+
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user) throw new Error('No user logged in');
 
@@ -173,6 +194,7 @@ export function useAuth() {
     signIn,
     signOut,
     updateProfile,
+    updatePassword,
     updateSettings,
   };
 }

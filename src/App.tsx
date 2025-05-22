@@ -11,6 +11,7 @@ import GenreMenu from './components/GenreMenu';
 import OfflineMusic from './components/OfflineMusic';
 import PlaylistScreen from './components/PlaylistScreen';
 import AuthModal from './components/AuthModal';
+import ProfileModal from './components/ProfileModal';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
@@ -42,10 +43,13 @@ function App() {
 
   const {
     user,
+    profile,
     loading: authLoading,
     signIn,
     signUp,
-    signOut
+    signOut,
+    updateProfile,
+    updatePassword
   } = useAuth();
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
@@ -55,6 +59,7 @@ function App() {
   const [showPlaylistScreen, setShowPlaylistScreen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'offline' | 'playlists'>('home');
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
@@ -156,11 +161,11 @@ function App() {
             <ThemeToggle />
             {user ? (
               <button
-                onClick={signOut}
-                className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors"
-                title="Sign Out"
+                onClick={() => setShowProfileModal(true)}
+                className="flex items-center space-x-2 px-3 py-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors hover:bg-gray-300 dark:hover:bg-gray-700"
               >
                 <UserCircle size={18} />
+                <span className="text-sm font-medium">{profile?.username || 'Profile'}</span>
               </button>
             ) : (
               <button
@@ -297,6 +302,18 @@ function App() {
         onSignIn={signIn}
         onSignUp={signUp}
       />
+
+      {/* Profile Modal */}
+      {user && (
+        <ProfileModal
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          email={user.email!}
+          username={profile?.username || ''}
+          onUpdateProfile={updateProfile}
+          onUpdatePassword={updatePassword}
+        />
+      )}
     </div>
   );
 }
