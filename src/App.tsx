@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Music, List, Download, Home } from 'lucide-react';
+import { Music, List, Download, Home, UserCircle } from 'lucide-react';
 
 // Components
 import SearchBar from './components/SearchBar';
@@ -10,10 +10,12 @@ import ThemeToggle from './components/ThemeToggle';
 import GenreMenu from './components/GenreMenu';
 import OfflineMusic from './components/OfflineMusic';
 import PlaylistScreen from './components/PlaylistScreen';
+import AuthModal from './components/AuthModal';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
 import { usePlaylist } from './hooks/usePlaylist';
+import { useAuth } from './hooks/useAuth';
 
 // Types
 import { Video } from './types';
@@ -37,6 +39,14 @@ function App() {
     removeFromPlaylist,
     addToRecentlyPlayed
   } = usePlaylist();
+
+  const {
+    user,
+    loading: authLoading,
+    signIn,
+    signUp,
+    signOut
+  } = useAuth();
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
@@ -44,6 +54,7 @@ function App() {
   const [showOfflineMusic, setShowOfflineMusic] = useState(false);
   const [showPlaylistScreen, setShowPlaylistScreen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'offline' | 'playlists'>('home');
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
@@ -52,6 +63,10 @@ function App() {
   };
 
   const handleAddToFavorites = (video: Video) => {
+    if (!user) {
+      setShowAuthModal(true);
+      return;
+    }
     addToPlaylist('favorites', video);
   };
 
@@ -73,9 +88,21 @@ function App() {
   };
 
   const navigateTo = (screen: 'home' | 'offline' | 'playlists') => {
+    if ((screen === 'playlists' || screen === 'offline') && !user) {
+      setShowAuthModal(true);
+      return;
+    }
     setCurrentScreen(screen);
     setShowOfflineMusic(screen === 'offline');
     setShowPlaylistScreen(screen === 'playlists');
+  };
+
+  const handleAuthAction = (action: 'playlist' | 'download' | 'favorite') => {
+    if (!user) {
+      setShowAuthModal(true);
+      return false;
+    }
+    return true;
   };
 
   const offlinePlaylist = playlists.find(p => p.id === 'offline');
@@ -127,6 +154,22 @@ function App() {
               <List size={18} />
             </button>
             <ThemeToggle />
+            {user ? (
+              <button
+                onClick={signOut}
+                className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors"
+                title="Sign Out"
+              >
+                <UserCircle size={18} />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
+              >
+                Sign In
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -190,7 +233,12 @@ function App() {
                     key={video.id}
                     video={video}
                     onPlay={handlePlayVideo}
-                    onAddToPlaylist={() => setIsPlaylistOpen(true) || setCurrentVideo(video)}
+                    onAddToPlaylist={() => {
+                      if (handleAuthAction('playlist')) {
+                        setIsPlaylistOpen(true);
+                        setCurrentVideo(video);
+                      }
+                    }}
                   />
                 ))}
               </div>
@@ -217,7 +265,11 @@ function App() {
               video={currentVideo}
               onClose={() => setCurrentVideo(null)}
               onAddToFavorites={handleAddToFavorites}
-              onAddToPlaylist={() => setIsPlaylistOpen(true)}
+              onAddToPlaylist={() => {
+                if (handleAuthAction('playlist')) {
+                  setIsPlaylistOpen(true);
+                }
+              }}
               miniMode={miniPlayerMode}
               onToggleMiniMode={() => setMiniPlayerMode(!miniPlayerMode)}
             />
@@ -236,6 +288,14 @@ function App() {
         onPlayItem={handlePlayFromPlaylist}
         currentVideo={currentVideo}
         onAddToPlaylist={addToPlaylist}
+      />
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSignIn={signIn}
+        onSignUp={signUp}
       />
     </div>
   );
