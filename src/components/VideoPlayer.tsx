@@ -36,7 +36,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [duration, setDuration] = useState(0);
 
   useEffect(() => {
-    // Reset player state when video changes
     setIsPlaying(true);
     setElapsed(0);
   }, [video]);
@@ -47,7 +46,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
     setPlayer(event.target);
     setDuration(event.target.getDuration());
     
-    // Start a timer to update elapsed time
     const timer = setInterval(() => {
       if (event.target.getCurrentTime) {
         setElapsed(event.target.getCurrentTime());
@@ -109,8 +107,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const playerOptions = {
-    height: miniMode ? '180' : '390',
-    width: '100%',
+    height: '1',
+    width: '1',
     playerVars: {
       autoplay: 1,
       controls: 0,
@@ -122,110 +120,107 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div className={`bg-gray-900 rounded-lg overflow-hidden transition-all duration-300 ${
-      miniMode ? 'fixed bottom-4 right-4 w-80 shadow-lg z-50' : 'w-full'
+      miniMode ? 'fixed bottom-4 right-4 w-80 shadow-lg z-50' : 'w-full max-w-xl mx-auto'
     }`}>
-      <div className="relative">
+      <div className="relative" style={{ height: 1, overflow: 'hidden' }}>
         <YouTube
           videoId={video.id}
           opts={playerOptions}
           onReady={handleReady}
           onStateChange={(e) => setIsPlaying(e.data === 1)}
-          className="w-full"
+          className="opacity-0"
         />
-        
-        {/* Overlay controls */}
-        <div className="absolute top-2 right-2 flex space-x-2">
-          <button 
-            onClick={onToggleMiniMode} 
-            className="p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-          >
-            {miniMode ? <Maximize size={16} /> : <Minimize size={16} />}
-          </button>
-          <button 
-            onClick={onClose} 
-            className="p-1.5 bg-black/50 hover:bg-black/70 rounded-full text-white transition-colors"
-          >
-            <X size={16} />
-          </button>
-        </div>
       </div>
       
-      <div className="p-3 bg-gray-800 text-white">
-        {!miniMode && (
-          <div className="mb-2">
+      <div className="p-4 bg-gray-800 text-white">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex-1 min-w-0 mr-4">
             <h3 className="font-medium text-sm truncate">{video.title}</h3>
             <p className="text-xs text-gray-400">{video.channelTitle}</p>
           </div>
-        )}
-        
-        <div className="flex items-center mb-2">
-          <input
-            type="range"
-            min="0"
-            max={duration}
-            value={elapsed}
-            onChange={handleSeek}
-            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
-          />
+          <div className="flex items-center space-x-2">
+            <button 
+              onClick={onToggleMiniMode} 
+              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
+            >
+              {miniMode ? <Maximize size={16} /> : <Minimize size={16} />}
+            </button>
+            <button 
+              onClick={onClose} 
+              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
         
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-1 text-xs text-gray-400">
-            <span>{formatTime(elapsed)}</span>
-            <span>/</span>
-            <span>{formatTime(duration)}</span>
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-gray-400">{formatTime(elapsed)}</span>
+            <div className="flex-1">
+              <input
+                type="range"
+                min="0"
+                max={duration}
+                value={elapsed}
+                onChange={handleSeek}
+                className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+              />
+            </div>
+            <span className="text-xs text-gray-400">{formatTime(duration)}</span>
           </div>
           
-          <div className="flex items-center space-x-2">
-            {!miniMode && onPrevious && (
-              <button onClick={onPrevious} className="p-1 hover:text-purple-400 transition-colors">
-                <SkipBack size={18} />
-              </button>
-            )}
-            
-            <button onClick={togglePlay} className="p-1.5 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors">
-              {isPlaying ? <Pause size={16} /> : <Play size={16} />}
-            </button>
-            
-            {!miniMode && onNext && (
-              <button onClick={onNext} className="p-1 hover:text-purple-400 transition-colors">
-                <SkipForward size={18} />
-              </button>
-            )}
-            
-            <div className="flex items-center ml-2">
-              <button onClick={toggleMute} className="p-1 hover:text-purple-400 transition-colors">
-                {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              {onPrevious && (
+                <button onClick={onPrevious} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
+                  <SkipBack size={20} />
+                </button>
+              )}
+              
+              <button 
+                onClick={togglePlay} 
+                className="p-3 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
+              >
+                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
               </button>
               
-              {!miniMode && (
+              {onNext && (
+                <button onClick={onNext} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
+                  <SkipForward size={20} />
+                </button>
+              )}
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <button onClick={toggleMute} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
+                  {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                </button>
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={volume}
                   onChange={handleVolumeChange}
-                  className="w-16 h-1 ml-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
-              )}
+              </div>
+              
+              <button 
+                onClick={() => video && onAddToFavorites(video)} 
+                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <Heart size={20} />
+              </button>
+              
+              <button 
+                onClick={() => video && onAddToPlaylist(video)} 
+                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
+              >
+                <ListPlus size={20} />
+              </button>
             </div>
-            
-            {!miniMode && (
-              <>
-                <button 
-                  onClick={() => video && onAddToFavorites(video)} 
-                  className="p-1 hover:text-purple-400 transition-colors ml-2"
-                >
-                  <Heart size={18} />
-                </button>
-                <button 
-                  onClick={() => video && onAddToPlaylist(video)} 
-                  className="p-1 hover:text-purple-400 transition-colors"
-                >
-                  <ListPlus size={18} />
-                </button>
-              </>
-            )}
           </div>
         </div>
       </div>
