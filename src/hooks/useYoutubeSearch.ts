@@ -1,9 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Video } from '../types';
 
-const API_KEY = 'YOUR_YOUTUBE_API_KEY';
+const API_KEY: string = 'AIzaSyByxwG0HJLFWsrDxIe9cepm6SKX0_yvyOE';
 const CACHE_NAME = 'youtube-search-cache';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+interface YouTubeSearchItem {
+  id: { videoId: string };
+  snippet: {
+    title: string;
+    channelTitle: string;
+    thumbnails: {
+      medium: { url: string };
+    };
+  };
+}
 
 export function useYoutubeSearch() {
   const [isLoading, setIsLoading] = useState(false);
@@ -22,7 +33,7 @@ export function useYoutubeSearch() {
 
     try {
       const cache = await caches.open(CACHE_NAME);
-      const cacheKey = `https://example.com/search?q=${encodeURIComponent(query)}`;
+      const cacheKey = `youtube-cache-${query.toLowerCase()}`;
       const response = await cache.match(cacheKey);
       
       if (!response) return null;
@@ -53,7 +64,7 @@ export function useYoutubeSearch() {
         timestamp: Date.now()
       };
       
-      const cacheKey = `https://example.com/search?q=${encodeURIComponent(query)}`;
+      const cacheKey = `youtube-cache-${query.toLowerCase()}`;
       await cache.put(
         cacheKey,
         new Response(JSON.stringify(data))
@@ -72,7 +83,6 @@ export function useYoutubeSearch() {
     setIsLoading(true);
     setError(null);
 
-    // Try to get cached results first
     const cachedResults = await getCachedResults(query);
     if (cachedResults) {
       setResults(cachedResults);
@@ -80,8 +90,7 @@ export function useYoutubeSearch() {
       return;
     }
 
-    // If no API key is set, use mock data without attempting API call
-    if (API_KEY === 'YOUR_YOUTUBE_API_KEY') {
+    if (!API_KEY || API_KEY === 'YOUR_YOUTUBE_API_KEY') {
       const mockResults = getMockVideos().filter(video => 
         video.title.toLowerCase().includes(query.toLowerCase()) ||
         video.channelTitle.toLowerCase().includes(query.toLowerCase())
@@ -108,7 +117,7 @@ export function useYoutubeSearch() {
 
       const data = await response.json();
       
-      const videos: Video[] = data.items.map((item: any) => ({
+      const videos: Video[] = data.items.map((item: YouTubeSearchItem) => ({
         id: item.id.videoId,
         title: item.snippet.title,
         channelTitle: item.snippet.channelTitle,
