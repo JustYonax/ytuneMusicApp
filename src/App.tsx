@@ -7,6 +7,7 @@ import VideoCard from './components/VideoCard';
 import VideoPlayer from './components/VideoPlayer';
 import PlaylistDrawer from './components/PlaylistDrawer';
 import ThemeToggle from './components/ThemeToggle';
+import GenreMenu from './components/GenreMenu';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
@@ -16,7 +17,16 @@ import { usePlaylist } from './hooks/usePlaylist';
 import { Video } from './types';
 
 function App() {
-  const { isLoading, error, results, searchVideos } = useYoutubeSearch();
+  const { 
+    isLoading, 
+    error, 
+    results, 
+    searchVideos, 
+    genres, 
+    selectedGenre, 
+    setSelectedGenre 
+  } = useYoutubeSearch();
+  
   const { 
     playlists, 
     createPlaylist, 
@@ -29,11 +39,6 @@ function App() {
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [miniPlayerMode, setMiniPlayerMode] = useState(false);
-
-  // On component mount, search for some default music
-  useEffect(() => {
-    searchVideos('relaxing music');
-  }, []);
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
@@ -59,6 +64,11 @@ function App() {
 
   const handleTogglePlaylistDrawer = () => {
     setIsPlaylistOpen(!isPlaylistOpen);
+  };
+
+  const handleGenreSelect = (genre: string) => {
+    setSelectedGenre(genre);
+    searchVideos(genre);
   };
 
   return (
@@ -92,9 +102,14 @@ function App() {
       <section className="py-8 bg-gradient-to-b from-purple-600 to-indigo-700 dark:from-purple-900 dark:to-indigo-900">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl font-bold text-white mb-6">Find Your Favorite Music</h2>
-          <div className="mx-auto max-w-xl">
+          <div className="mx-auto max-w-xl mb-6">
             <SearchBar onSearch={searchVideos} isLoading={isLoading} />
           </div>
+          <GenreMenu 
+            genres={genres}
+            selectedGenre={selectedGenre}
+            onGenreSelect={handleGenreSelect}
+          />
         </div>
       </section>
       
@@ -104,6 +119,12 @@ function App() {
           <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-300">
             {error}
           </div>
+        )}
+        
+        {selectedGenre && (
+          <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
+            {selectedGenre} Tracks
+          </h2>
         )}
         
         {/* Video Grid */}
@@ -129,8 +150,12 @@ function App() {
       
       {/* Video Player */}
       {currentVideo && (
-        <div className={`${miniPlayerMode ? '' : 'fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4'}`}>
-          <div className={`${miniPlayerMode ? 'w-auto' : 'w-full max-w-3xl'}`}>
+        <div className={`fixed inset-0 ${miniPlayerMode ? 'pointer-events-none' : 'bg-black bg-opacity-75'} z-50`}>
+          <div className={`${
+            miniPlayerMode 
+              ? 'fixed bottom-4 right-4 w-80 pointer-events-auto' 
+              : 'absolute inset-0 flex items-center justify-center p-4'
+          }`}>
             <VideoPlayer
               video={currentVideo}
               onClose={() => setCurrentVideo(null)}

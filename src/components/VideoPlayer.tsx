@@ -107,8 +107,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const playerOptions = {
-    height: '1',
-    width: '1',
+    height: miniMode ? '180' : '360',
+    width: miniMode ? '320' : '640',
     playerVars: {
       autoplay: 1,
       controls: 0,
@@ -120,15 +120,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div className={`bg-gray-900 rounded-lg overflow-hidden transition-all duration-300 ${
-      miniMode ? 'fixed bottom-4 right-4 w-80 shadow-lg z-50' : 'w-full max-w-xl mx-auto'
+      miniMode ? 'w-80 shadow-lg' : 'w-full max-w-4xl mx-auto'
     }`}>
-      <div className="relative" style={{ height: 1, overflow: 'hidden' }}>
+      <div className="relative bg-black">
         <YouTube
           videoId={video.id}
           opts={playerOptions}
           onReady={handleReady}
           onStateChange={(e) => setIsPlaying(e.data === 1)}
-          className="opacity-0"
+          className="w-full"
         />
       </div>
       

@@ -16,16 +16,29 @@ interface YouTubeSearchItem {
   };
 }
 
+const GENRES = [
+  'Pop Music',
+  'Rock Music',
+  'Hip Hop',
+  'Jazz',
+  'Classical',
+  'Electronic',
+  'Latin Music',
+  'R&B',
+  'Country Music',
+  'Indie Music'
+];
+
 export function useYoutubeSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Video[]>([]);
+  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
 
-  // Initialize cache on mount
+  // Initialize with a random genre on mount
   useEffect(() => {
-    if ('caches' in window) {
-      caches.open(CACHE_NAME);
-    }
+    const randomGenre = GENRES[Math.floor(Math.random() * GENRES.length)];
+    searchVideos(randomGenre);
   }, []);
 
   const getCachedResults = async (query: string): Promise<Video[] | null> => {
@@ -33,8 +46,7 @@ export function useYoutubeSearch() {
 
     try {
       const cache = await caches.open(CACHE_NAME);
-      const cacheKey = `youtube-cache-${query.toLowerCase()}`;
-      const response = await cache.match(cacheKey);
+      const response = await cache.match(`youtube-cache-${query.toLowerCase()}`);
       
       if (!response) return null;
       
@@ -42,8 +54,7 @@ export function useYoutubeSearch() {
       const now = Date.now();
       
       if (now - data.timestamp > CACHE_DURATION) {
-        // Cache expired, remove it
-        await cache.delete(cacheKey);
+        await cache.delete(`youtube-cache-${query.toLowerCase()}`);
         return null;
       }
       
@@ -64,9 +75,8 @@ export function useYoutubeSearch() {
         timestamp: Date.now()
       };
       
-      const cacheKey = `youtube-cache-${query.toLowerCase()}`;
       await cache.put(
-        cacheKey,
+        `youtube-cache-${query.toLowerCase()}`,
         new Response(JSON.stringify(data))
       );
     } catch (err) {
@@ -82,6 +92,7 @@ export function useYoutubeSearch() {
 
     setIsLoading(true);
     setError(null);
+    setSelectedGenre(query);
 
     const cachedResults = await getCachedResults(query);
     if (cachedResults) {
@@ -90,25 +101,11 @@ export function useYoutubeSearch() {
       return;
     }
 
-    if (!API_KEY || API_KEY === 'YOUR_YOUTUBE_API_KEY') {
-      const mockResults = getMockVideos().filter(video => 
-        video.title.toLowerCase().includes(query.toLowerCase()) ||
-        video.channelTitle.toLowerCase().includes(query.toLowerCase())
-      );
-      
-      setTimeout(() => {
-        setResults(mockResults);
-        setCachedResults(query, mockResults);
-        setIsLoading(false);
-      }, 500);
-      return;
-    }
-
     try {
       const response = await fetch(
         `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=20&q=${encodeURIComponent(
           query + ' music'
-        )}&type=video&key=${API_KEY}`
+        )}&type=video&videoCategoryId=10&key=${API_KEY}`
       );
 
       if (!response.ok) {
@@ -129,12 +126,26 @@ export function useYoutubeSearch() {
     } catch (err) {
       console.error('Error searching YouTube:', err);
       setError('Failed to search YouTube. Please try again later.');
+      // Use mock data as fallback
+      const mockResults = getMockVideos().filter(video => 
+        video.title.toLowerCase().includes(query.toLowerCase()) ||
+        video.channelTitle.toLowerCase().includes(query.toLowerCase())
+      );
+      setResults(mockResults);
     } finally {
       setIsLoading(false);
     }
   };
 
-  return { isLoading, error, results, searchVideos };
+  return { 
+    isLoading, 
+    error, 
+    results, 
+    searchVideos,
+    genres: GENRES,
+    selectedGenre,
+    setSelectedGenre 
+  };
 }
 
 // Mock data for demonstration purposes
