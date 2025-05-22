@@ -14,6 +14,11 @@ export function usePlaylist() {
         id: 'recently-played',
         name: 'Recently Played',
         items: []
+      },
+      {
+        id: 'offline',
+        name: 'Downloaded',
+        items: []
       }
     ];
   });
@@ -34,14 +39,14 @@ export function usePlaylist() {
 
   const deletePlaylist = (playlistId: string) => {
     // Don't allow deleting the special playlists
-    if (playlistId === 'favorites' || playlistId === 'recently-played') {
+    if (['favorites', 'recently-played', 'offline'].includes(playlistId)) {
       return false;
     }
     setPlaylists(playlists.filter(p => p.id !== playlistId));
     return true;
   };
 
-  const addToPlaylist = (playlistId: string, video: Video) => {
+  const addToPlaylist = async (playlistId: string, video: Video) => {
     setPlaylists(playlists.map(playlist => {
       if (playlist.id === playlistId) {
         // Check if video already exists in playlist
@@ -62,9 +67,25 @@ export function usePlaylist() {
       }
       return playlist;
     }));
+
+    // If adding to offline playlist, cache the video
+    if (playlistId === 'offline') {
+      try {
+        const cache = await caches.open('music-cache');
+        await cache.put(`music-${video.id}`, new Response(JSON.stringify({
+          ...video,
+          timestamp: Date.now()
+        })));
+      } catch (err) {
+        console.error('Error caching music:', err);
+      }
+    }
   };
 
-  const removeFromPlaylist = (playlistId: string, itemId: string) => {
+  const removeFromPlaylist = async (playlistId: string, itemId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId);
+    const item = playlist?.items.find(i => i.id === itemId);
+
     setPlaylists(playlists.map(playlist => {
       if (playlist.id === playlistId) {
         return {
@@ -74,6 +95,16 @@ export function usePlaylist() {
       }
       return playlist;
     }));
+
+    // If removing from offline playlist, remove from cache
+    if (playlistId === 'offline' && item) {
+      try {
+        const cache = await caches.open('music-cache');
+        await cache.delete(`music-${item.videoId}`);
+      } catch (err) {
+        console.error('Error removing from cache:', err);
+      }
+    }
   };
 
   const addToRecentlyPlayed = (video: Video) => {

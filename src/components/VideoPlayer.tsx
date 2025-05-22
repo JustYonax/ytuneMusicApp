@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { Video } from '../types';
 import { 
-  Volume2, VolumeX, Maximize, Minimize, 
+  Volume2, VolumeX, Minimize, 
   SkipBack, SkipForward, Pause, Play, 
-  X, Heart, ListPlus
+  X, Heart, ListPlus, Download
 } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -34,11 +34,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [volume, setVolume] = useState(80);
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isDownloaded, setIsDownloaded] = useState(false);
 
   useEffect(() => {
     setIsPlaying(true);
     setElapsed(0);
+    checkIfDownloaded();
   }, [video]);
+
+  const checkIfDownloaded = async () => {
+    if (!video) return;
+    const cache = await caches.open('music-cache');
+    const response = await cache.match(`music-${video.id}`);
+    setIsDownloaded(!!response);
+  };
+
+  const handleDownload = async () => {
+    if (!video) return;
+    try {
+      const cache = await caches.open('music-cache');
+      await cache.put(`music-${video.id}`, new Response(JSON.stringify({
+        ...video,
+        timestamp: Date.now()
+      })));
+      setIsDownloaded(true);
+    } catch (err) {
+      console.error('Error caching music:', err);
+    }
+  };
 
   if (!video) return null;
 
@@ -107,8 +130,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const playerOptions = {
-    height: miniMode ? '180' : '360',
-    width: miniMode ? '320' : '640',
+    height: '0',
+    width: '0',
     playerVars: {
       autoplay: 1,
       controls: 0,
@@ -120,15 +143,14 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div className={`bg-gray-900 rounded-lg overflow-hidden transition-all duration-300 ${
-      miniMode ? 'w-80 shadow-lg' : 'w-full max-w-4xl mx-auto'
+      miniMode ? 'w-80 shadow-lg' : 'w-full max-w-xl mx-auto'
     }`}>
-      <div className="relative bg-black">
+      <div className="hidden">
         <YouTube
           videoId={video.id}
           opts={playerOptions}
           onReady={handleReady}
           onStateChange={(e) => setIsPlaying(e.data === 1)}
-          className="w-full"
         />
       </div>
       
@@ -140,10 +162,21 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           </div>
           <div className="flex items-center space-x-2">
             <button 
+              onClick={handleDownload}
+              className={`p-1.5 rounded-full transition-colors ${
+                isDownloaded 
+                  ? 'bg-green-600 hover:bg-green-700' 
+                  : 'hover:bg-gray-700'
+              }`}
+              title={isDownloaded ? 'Downloaded for offline playback' : 'Download for offline playback'}
+            >
+              <Download size={16} />
+            </button>
+            <button 
               onClick={onToggleMiniMode} 
               className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
             >
-              {miniMode ? <Maximize size={16} /> : <Minimize size={16} />}
+              <Minimize size={16} />
             </button>
             <button 
               onClick={onClose} 
