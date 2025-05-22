@@ -18,3 +18,17 @@ export interface Playlist {
   name: string;
   items: PlaylistItem[];
 }
+
+export interface UserProfile {
+  id: string;
+  username: string;
+  avatar_url?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserSettings {
+  theme: 'light' | 'dark';
+  autoplay: boolean;
+  quality: 'auto' | 'high' | 'medium' | 'low';
+}
