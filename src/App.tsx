@@ -64,7 +64,7 @@ function App() {
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
     addToRecentlyPlayed(video);
-    setMiniPlayerMode(false);
+    setMiniPlayerMode(true);
   };
 
   const handleAddToFavorites = (video: Video) => {
@@ -84,7 +84,7 @@ function App() {
     };
     setCurrentVideo(videoFromPlaylist);
     addToRecentlyPlayed(videoFromPlaylist);
-    setMiniPlayerMode(false);
+    setMiniPlayerMode(true);
   };
 
   const handleGenreSelect = (genre: string) => {
@@ -197,7 +197,7 @@ function App() {
       )}
       
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className={`container mx-auto px-4 py-8 ${currentVideo ? 'mb-24' : ''}`}>
         {currentScreen === 'offline' && offlinePlaylist && (
           <OfflineMusic
             playlist={offlinePlaylist}
@@ -260,26 +260,18 @@ function App() {
       
       {/* Video Player */}
       {currentVideo && (
-        <div className={`fixed inset-0 ${miniPlayerMode ? 'pointer-events-none' : 'bg-black bg-opacity-75'} z-50`}>
-          <div className={`${
-            miniPlayerMode 
-              ? 'fixed bottom-4 right-4 w-80 pointer-events-auto' 
-              : 'absolute inset-0 flex items-center justify-center p-4'
-          }`}>
-            <VideoPlayer
-              video={currentVideo}
-              onClose={() => setCurrentVideo(null)}
-              onAddToFavorites={handleAddToFavorites}
-              onAddToPlaylist={() => {
-                if (handleAuthAction('playlist')) {
-                  setIsPlaylistOpen(true);
-                }
-              }}
-              miniMode={miniPlayerMode}
-              onToggleMiniMode={() => setMiniPlayerMode(!miniPlayerMode)}
-            />
-          </div>
-        </div>
+        <VideoPlayer
+          video={currentVideo}
+          onClose={() => setCurrentVideo(null)}
+          onAddToFavorites={handleAddToFavorites}
+          onAddToPlaylist={() => {
+            if (handleAuthAction('playlist')) {
+              setIsPlaylistOpen(true);
+            }
+          }}
+          miniMode={miniPlayerMode}
+          onToggleMiniMode={() => setMiniPlayerMode(!miniPlayerMode)}
+        />
       )}
       
       {/* Playlist Drawer */}

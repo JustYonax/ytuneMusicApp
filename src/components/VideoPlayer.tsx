@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { Video } from '../types';
 import { 
-  Volume2, VolumeX, Minimize, 
+  Volume2, VolumeX, Minimize2, Maximize2,
   SkipBack, SkipForward, Pause, Play, 
-  X, Heart, ListPlus, Download
+  Heart, ListPlus, Download
 } from 'lucide-react';
 
 interface VideoPlayerProps {
@@ -35,6 +35,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
   const [isDownloaded, setIsDownloaded] = useState(false);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
 
   useEffect(() => {
     setIsPlaying(true);
@@ -142,9 +143,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   return (
-    <div className={`bg-gray-900 rounded-lg overflow-hidden transition-all duration-300 ${
-      miniMode ? 'w-80 shadow-lg' : 'w-full max-w-xl mx-auto'
-    }`}>
+    <div 
+      className={`${
+        miniMode 
+          ? 'fixed bottom-0 left-0 right-0 bg-gray-900 shadow-lg z-50'
+          : 'w-full max-w-xl mx-auto bg-gray-900 rounded-lg overflow-hidden'
+      } transition-all duration-300`}
+    >
       <div className="hidden">
         <YouTube
           videoId={video.id}
@@ -154,107 +159,131 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         />
       </div>
       
-      <div className="p-4 bg-gray-800 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex-1 min-w-0 mr-4">
-            <h3 className="font-medium text-sm truncate">{video.title}</h3>
-            <p className="text-xs text-gray-400">{video.channelTitle}</p>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button 
-              onClick={handleDownload}
-              className={`p-1.5 rounded-full transition-colors ${
-                isDownloaded 
-                  ? 'bg-green-600 hover:bg-green-700' 
-                  : 'hover:bg-gray-700'
-              }`}
-              title={isDownloaded ? 'Downloaded for offline playback' : 'Download for offline playback'}
-            >
-              <Download size={16} />
-            </button>
-            <button 
-              onClick={onToggleMiniMode} 
-              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <Minimize size={16} />
-            </button>
-            <button 
-              onClick={onClose} 
-              className="p-1.5 hover:bg-gray-700 rounded-full transition-colors"
-            >
-              <X size={16} />
-            </button>
+      <div className={`flex items-center ${miniMode ? 'p-2' : 'p-4'} text-white`}>
+        {/* Thumbnail and Title */}
+        <div className="flex items-center flex-1 min-w-0">
+          <img 
+            src={video.thumbnailUrl} 
+            alt={video.title}
+            className={`${miniMode ? 'w-12 h-12' : 'w-16 h-16'} object-cover rounded`}
+          />
+          <div className="ml-3 flex-1 min-w-0">
+            <h3 className={`font-medium ${miniMode ? 'text-sm' : 'text-base'} truncate`}>
+              {video.title}
+            </h3>
+            <p className={`${miniMode ? 'text-xs' : 'text-sm'} text-gray-400 truncate`}>
+              {video.channelTitle}
+            </p>
           </div>
         </div>
-        
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <span className="text-xs text-gray-400">{formatTime(elapsed)}</span>
-            <div className="flex-1">
-              <input
-                type="range"
-                min="0"
-                max={duration}
-                value={elapsed}
-                onChange={handleSeek}
-                className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
-              />
-            </div>
-            <span className="text-xs text-gray-400">{formatTime(duration)}</span>
-          </div>
+
+        {/* Controls */}
+        <div className="flex items-center space-x-4">
+          {onPrevious && (
+            <button 
+              onClick={onPrevious}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            >
+              <SkipBack size={miniMode ? 18 : 20} />
+            </button>
+          )}
           
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              {onPrevious && (
-                <button onClick={onPrevious} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
-                  <SkipBack size={20} />
-                </button>
-              )}
-              
-              <button 
-                onClick={togglePlay} 
-                className="p-3 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
-              >
-                {isPlaying ? <Pause size={20} /> : <Play size={20} />}
-              </button>
-              
-              {onNext && (
-                <button onClick={onNext} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
-                  <SkipForward size={20} />
-                </button>
-              )}
-            </div>
-            
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <button onClick={toggleMute} className="p-2 hover:bg-gray-700 rounded-full transition-colors">
-                  {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-                </button>
+          <button 
+            onClick={togglePlay}
+            className="p-3 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
+          >
+            {isPlaying ? <Pause size={miniMode ? 18 : 20} /> : <Play size={miniMode ? 18 : 20} />}
+          </button>
+          
+          {onNext && (
+            <button 
+              onClick={onNext}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            >
+              <SkipForward size={miniMode ? 18 : 20} />
+            </button>
+          )}
+
+          {/* Volume Control */}
+          <div 
+            className="relative"
+            onMouseEnter={() => setShowVolumeSlider(true)}
+            onMouseLeave={() => setShowVolumeSlider(false)}
+          >
+            <button 
+              onClick={toggleMute}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+            >
+              {isMuted ? <VolumeX size={miniMode ? 18 : 20} /> : <Volume2 size={miniMode ? 18 : 20} />}
+            </button>
+            {showVolumeSlider && (
+              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 rounded-lg shadow-lg">
                 <input
                   type="range"
                   min="0"
                   max="100"
                   value={volume}
                   onChange={handleVolumeChange}
-                  className="w-20 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  className="w-24 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
                 />
               </div>
-              
-              <button 
-                onClick={() => video && onAddToFavorites(video)} 
-                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
-              >
-                <Heart size={20} />
-              </button>
-              
-              <button 
-                onClick={() => video && onAddToPlaylist(video)} 
-                className="p-2 hover:bg-gray-700 rounded-full transition-colors"
-              >
-                <ListPlus size={20} />
-              </button>
-            </div>
+            )}
           </div>
+
+          {/* Additional Controls */}
+          <button 
+            onClick={() => video && onAddToFavorites(video)}
+            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <Heart size={miniMode ? 18 : 20} />
+          </button>
+          
+          <button 
+            onClick={() => video && onAddToPlaylist(video)}
+            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          >
+            <ListPlus size={miniMode ? 18 : 20} />
+          </button>
+
+          <button
+            onClick={handleDownload}
+            className={`p-2 rounded-full transition-colors ${
+              isDownloaded 
+                ? 'text-green-500 hover:bg-green-900/20' 
+                : 'hover:bg-gray-800'
+            }`}
+          >
+            <Download size={miniMode ? 18 : 20} />
+          </button>
+
+          <button 
+            onClick={onToggleMiniMode}
+            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          >
+            {miniMode ? <Maximize2 size={18} /> : <Minimize2 size={20} />}
+          </button>
+        </div>
+      </div>
+
+      {/* Progress Bar */}
+      <div className="px-4 pb-2">
+        <div className="relative group">
+          <input
+            type="range"
+            min="0"
+            max={duration}
+            value={elapsed}
+            onChange={handleSeek}
+            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400"
+          />
+          <div 
+            className="absolute left-0 bottom-0 h-1 bg-purple-500 rounded-lg pointer-events-none"
+            style={{ width: `${(elapsed / duration) * 100}%` }}
+          />
+        </div>
+        <div className="flex justify-between mt-1 text-xs text-gray-400">
+          <span>{formatTime(elapsed)}</span>
+          <span>{formatTime(duration)}</span>
         </div>
       </div>
     </div>
