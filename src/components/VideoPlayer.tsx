@@ -1,146 +1,119 @@
-import React, { useState, useEffect } from 'react';
-import YouTube from 'react-youtube';
+import React, { useState, useEffect, useRef } from 'react';
 import { Video } from '../types';
 import { 
   Volume2, VolumeX, Maximize2,
   SkipBack, SkipForward, Pause, Play, 
-  Heart, ListPlus, Download
+  Heart, ListPlus
 } from 'lucide-react';
 
 interface VideoPlayerProps {
   video: Video | null;
-  onClose: () => void;
   onNext?: () => void;
   onPrevious?: () => void;
   onAddToFavorites: (video: Video) => void;
-  onAddToPlaylist: (video: Video) => void;
+  onAddToPlaylist: () => void;
   miniMode?: boolean;
   onToggleMiniMode: () => void;
 }
 
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
-  video, 
-  onClose, 
-  onNext, 
-  onPrevious, 
+  video,
+  onNext,
+  onPrevious,
   onAddToFavorites,
   onAddToPlaylist,
-  miniMode = true,
+  miniMode = false,
   onToggleMiniMode
 }) => {
-  const [player, setPlayer] = useState<any>(null);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-  const [volume, setVolume] = useState(80);
-  const [elapsed, setElapsed] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [isDownloaded, setIsDownloaded] = useState(false);
-  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    setIsPlaying(true);
-    setElapsed(0);
-    checkIfDownloaded();
+    if (video) {
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setIsLoading(true);
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+    }
   }, [video]);
 
-  const checkIfDownloaded = async () => {
-    if (!video) return;
-    const cache = await caches.open('music-cache');
-    const response = await cache.match(`music-${video.id}`);
-    setIsDownloaded(!!response);
-  };
+  const handlePlayPause = async () => {
+    if (!video?.previewUrl) return;
 
-  const handleDownload = async () => {
-    if (!video) return;
     try {
-      const cache = await caches.open('music-cache');
-      await cache.put(`music-${video.id}`, new Response(JSON.stringify({
-        ...video,
-        timestamp: Date.now()
-      })));
-      setIsDownloaded(true);
-    } catch (err) {
-      console.error('Error caching music:', err);
-    }
-  };
-
-  if (!video) return null;
-
-  const handleReady = (event: any) => {
-    setPlayer(event.target);
-    setDuration(event.target.getDuration());
-    
-    const timer = setInterval(() => {
-      if (event.target.getCurrentTime) {
-        setElapsed(event.target.getCurrentTime());
-      }
-    }, 1000);
-
-    return () => clearInterval(timer);
-  };
-
-  const togglePlay = () => {
-    if (player) {
       if (isPlaying) {
-        player.pauseVideo();
+        await audioRef.current?.pause();
       } else {
-        player.playVideo();
+        setIsLoading(true);
+        await audioRef.current?.play();
       }
       setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleMute = () => {
-    if (player) {
-      if (isMuted) {
-        player.unMute();
-        player.setVolume(volume);
-      } else {
-        player.mute();
-      }
-      setIsMuted(!isMuted);
+    } catch (error) {
+      console.error('Error playing audio:', error);
+      setError('Failed to play audio');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value);
+    const newVolume = parseFloat(e.target.value);
     setVolume(newVolume);
-    if (player) {
-      player.setVolume(newVolume);
-      if (newVolume === 0) {
-        setIsMuted(true);
-      } else if (isMuted) {
-        player.unMute();
+    if (audioRef.current) {
+      audioRef.current.volume = newVolume;
+    }
+    setIsMuted(newVolume === 0);
+  };
+
+  const handleMuteToggle = () => {
+    if (audioRef.current) {
+      if (isMuted) {
+        audioRef.current.volume = volume;
         setIsMuted(false);
+      } else {
+        audioRef.current.volume = 0;
+        setIsMuted(true);
       }
     }
   };
 
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const seekTo = parseInt(e.target.value);
-    setElapsed(seekTo);
-    if (player) {
-      player.seekTo(seekTo);
+  const handleTimeUpdate = () => {
+    if (audioRef.current) {
+      setCurrentTime(audioRef.current.currentTime);
     }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const time = parseFloat(e.target.value);
+    if (audioRef.current) {
+      audioRef.current.currentTime = time;
+      setCurrentTime(time);
+    }
   };
 
-  const playerOptions = {
-    height: '0',
-    width: '0',
-    playerVars: {
-      autoplay: 1,
-      controls: 0,
-      modestbranding: 1,
-      rel: 0,
-      fs: 0,
-    },
+  const handleLoadedData = () => {
+    setIsLoading(false);
   };
+
+  const handleError = () => {
+    setIsLoading(false);
+    setError('Failed to load audio');
+  };
+
+  const formatTime = (time: number) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!video) return null;
 
   return (
     <div 
@@ -148,14 +121,18 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
         !miniMode ? 'h-96' : ''
       }`}
     >
-      <div className="hidden">
-        <YouTube
-          videoId={video.id}
-          opts={playerOptions}
-          onReady={handleReady}
-          onStateChange={(e) => setIsPlaying(e.data === 1)}
-        />
-      </div>
+      <audio
+        ref={audioRef}
+        src={video.previewUrl}
+        onTimeUpdate={handleTimeUpdate}
+        onEnded={() => {
+          setIsPlaying(false);
+          if (onNext) onNext();
+        }}
+        onLoadedData={handleLoadedData}
+        onError={handleError}
+        preload="auto"
+      />
       
       <div className={`flex items-center ${miniMode ? 'p-2' : 'p-4'} text-white`}>
         {/* Thumbnail and Title */}
@@ -170,120 +147,112 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
               {video.title}
             </h3>
             <p className={`${miniMode ? 'text-xs' : 'text-sm'} text-gray-400 truncate`}>
-              {video.channelTitle}
+              {video.artist}
             </p>
           </div>
         </div>
 
         {/* Controls */}
         <div className="flex items-center space-x-4">
-          {onPrevious && (
-            <button 
-              onClick={onPrevious}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            >
-              <SkipBack size={miniMode ? 18 : 20} />
-            </button>
-          )}
-          
-          <button 
-            onClick={togglePlay}
-            className="p-3 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
+          <button
+            onClick={onPrevious}
+            disabled={!onPrevious}
+            className={`p-2 rounded-full hover:bg-gray-800 ${!onPrevious ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Previous track"
           >
-            {isPlaying ? <Pause size={miniMode ? 18 : 20} /> : <Play size={miniMode ? 18 : 20} />}
-          </button>
-          
-          {onNext && (
-            <button 
-              onClick={onNext}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            >
-              <SkipForward size={miniMode ? 18 : 20} />
-            </button>
-          )}
-
-          {/* Volume Control */}
-          <div 
-            className="relative"
-            onMouseEnter={() => setShowVolumeSlider(true)}
-            onMouseLeave={() => setShowVolumeSlider(false)}
-          >
-            <button 
-              onClick={toggleMute}
-              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-            >
-              {isMuted ? <VolumeX size={miniMode ? 18 : 20} /> : <Volume2 size={miniMode ? 18 : 20} />}
-            </button>
-            {showVolumeSlider && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 rounded-lg shadow-lg">
-                <input
-                  type="range"
-                  min="0"
-                  max="100"
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className="w-24 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
-                />
-              </div>
-            )}
-          </div>
-
-          {/* Additional Controls */}
-          <button 
-            onClick={() => video && onAddToFavorites(video)}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <Heart size={miniMode ? 18 : 20} />
-          </button>
-          
-          <button 
-            onClick={() => video && onAddToPlaylist(video)}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <ListPlus size={miniMode ? 18 : 20} />
+            <SkipBack size={20} />
           </button>
 
           <button
-            onClick={handleDownload}
-            className={`p-2 rounded-full transition-colors ${
-              isDownloaded 
-                ? 'text-green-500 hover:bg-green-900/20' 
-                : 'hover:bg-gray-800'
+            onClick={handlePlayPause}
+            disabled={!video.previewUrl || isLoading}
+            className={`p-3 rounded-full bg-purple-600 hover:bg-purple-700 ${
+              !video.previewUrl || isLoading ? 'opacity-50 cursor-not-allowed' : ''
             }`}
+            title={isPlaying ? 'Pause' : 'Play'}
           >
-            <Download size={miniMode ? 18 : 20} />
+            {isLoading ? (
+              <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : isPlaying ? (
+              <Pause size={24} />
+            ) : (
+              <Play size={24} />
+            )}
           </button>
 
-          <button 
-            onClick={onToggleMiniMode}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+          <button
+            onClick={onNext}
+            disabled={!onNext}
+            className={`p-2 rounded-full hover:bg-gray-800 ${!onNext ? 'opacity-50 cursor-not-allowed' : ''}`}
+            title="Next track"
           >
-            <Maximize2 size={18} />
+            <SkipForward size={20} />
+          </button>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handleMuteToggle}
+              className="p-2 rounded-full hover:bg-gray-800"
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+            </button>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={isMuted ? 0 : volume}
+              onChange={handleVolumeChange}
+              className="w-20"
+              title="Volume"
+            />
+          </div>
+
+          <button
+            onClick={() => onAddToFavorites(video)}
+            className="p-2 rounded-full hover:bg-gray-800"
+            title="Add to favorites"
+          >
+            <Heart size={20} />
+          </button>
+
+          <button
+            onClick={onAddToPlaylist}
+            className="p-2 rounded-full hover:bg-gray-800"
+            title="Add to playlist"
+          >
+            <ListPlus size={20} />
+          </button>
+
+          <button
+            onClick={onToggleMiniMode}
+            className="p-2 rounded-full hover:bg-gray-800"
+            title={miniMode ? 'Maximize' : 'Minimize'}
+          >
+            <Maximize2 size={20} />
           </button>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="px-4 pb-2">
-        <div className="relative group">
-          <input
-            type="range"
-            min="0"
-            max={duration}
-            value={elapsed}
-            onChange={handleSeek}
-            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400"
-          />
-          <div 
-            className="absolute left-0 bottom-0 h-1 bg-purple-500 rounded-lg pointer-events-none"
-            style={{ width: `${(elapsed / duration) * 100}%` }}
-          />
+      {!miniMode && (
+        <div className="px-4 pb-4">
+          <div className="flex items-center space-x-2">
+            <span className="text-xs text-gray-400">{formatTime(currentTime)}</span>
+            <input
+              type="range"
+              min="0"
+              max={video.duration || 30}
+              value={currentTime}
+              onChange={handleSeek}
+              className="flex-1"
+              title="Seek"
+            />
+            <span className="text-xs text-gray-400">{formatTime(video.duration || 30)}</span>
+          </div>
         </div>
-        <div className="flex justify-between mt-1 text-xs text-gray-400">
-          <span>{formatTime(elapsed)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

@@ -12,6 +12,7 @@ export function useAuth() {
     quality: 'auto'
   });
   const [loading, setLoading] = useState(true);
+  const [verificationSent, setVerificationSent] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -75,10 +76,52 @@ export function useAuth() {
     }
   };
 
+  const validatePassword = (password: string): { isValid: boolean; error?: string } => {
+    if (password.length < 8) {
+      return { isValid: false, error: 'Password must be at least 8 characters long' };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { isValid: false, error: 'Password must contain at least one uppercase letter' };
+    }
+    if (!/[a-z]/.test(password)) {
+      return { isValid: false, error: 'Password must contain at least one lowercase letter' };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { isValid: false, error: 'Password must contain at least one number' };
+    }
+    if (!/[!@#$%^&*]/.test(password)) {
+      return { isValid: false, error: 'Password must contain at least one special character (!@#$%^&*)' };
+    }
+    return { isValid: true };
+  };
+
   const signUp = async (email: string, password: string, username: string) => {
+    // Validate password
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      throw new Error(passwordValidation.error);
+    }
+
+    // Check if username is available
+    const { data: existingUser, error: checkError } = await supabase
+      .from('profiles')
+      .select('username')
+      .eq('username', username)
+      .single();
+
+    if (existingUser) {
+      throw new Error('Username is already taken');
+    }
+
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        data: {
+          username,
+        },
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
 
     if (authError) throw authError;
@@ -119,13 +162,71 @@ export function useAuth() {
     if (settingsError) {
       console.error('Error creating user settings:', settingsError);
     }
+
+    setVerificationSent(true);
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+
+    if (error) {
+      if (error.message.includes('Email not confirmed')) {
+        throw new Error('Please verify your email before signing in');
+      }
+      throw error;
+    }
+
+    if (!data.user?.email_confirmed_at) {
+      throw new Error('Please verify your email before signing in');
+    }
+  };
+
+  const signInWithProvider = async (provider: 'google' | 'github') => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) throw error;
+  };
+
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/reset-password`,
+    });
+
+    if (error) throw error;
+  };
+
+  const updatePassword = async (currentPassword: string, newPassword: string) => {
+    if (!user) throw new Error('No user logged in');
+
+    // Validate new password
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.isValid) {
+      throw new Error(passwordValidation.error);
+    }
+
+    // First verify the current password
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email: user.email!,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      throw new Error('Current password is incorrect');
+    }
+
+    // Update the password
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
     if (error) throw error;
   };
 
@@ -149,27 +250,6 @@ export function useAuth() {
     await fetchUserProfile(user.id);
   };
 
-  const updatePassword = async (currentPassword: string, newPassword: string) => {
-    if (!user) throw new Error('No user logged in');
-
-    // First verify the current password
-    const { error: verifyError } = await supabase.auth.signInWithPassword({
-      email: user.email!,
-      password: currentPassword,
-    });
-
-    if (verifyError) {
-      throw new Error('Current password is incorrect');
-    }
-
-    // Update the password
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    if (error) throw error;
-  };
-
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user) throw new Error('No user logged in');
 
@@ -190,9 +270,12 @@ export function useAuth() {
     profile,
     settings,
     loading,
+    verificationSent,
     signUp,
     signIn,
+    signInWithProvider,
     signOut,
+    resetPassword,
     updateProfile,
     updatePassword,
     updateSettings,

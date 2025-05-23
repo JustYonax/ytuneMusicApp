@@ -14,7 +14,7 @@ import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
 
 // Hooks
-import { useYoutubeSearch } from './hooks/useYoutubeSearch';
+import { useMusicSearch } from './hooks/useMusicSearch';
 import { usePlaylist } from './hooks/usePlaylist';
 import { useAuth } from './hooks/useAuth';
 
@@ -26,11 +26,8 @@ function App() {
     isLoading, 
     error, 
     results, 
-    searchVideos, 
-    genres, 
-    selectedGenre, 
-    setSelectedGenre 
-  } = useYoutubeSearch();
+    searchMusic
+  } = useMusicSearch();
   
   const { 
     playlists, 
@@ -49,7 +46,10 @@ function App() {
     signUp,
     signOut,
     updateProfile,
-    updatePassword
+    updatePassword,
+    signInWithProvider,
+    resetPassword,
+    verificationSent
   } = useAuth();
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
@@ -96,21 +96,10 @@ function App() {
     addToPlaylist('favorites', video);
   };
 
-  const handlePlayFromPlaylist = (videoId: string, title: string, channelTitle: string, thumbnailUrl: string) => {
-    const videoFromPlaylist: Video = {
-      id: videoId,
-      title,
-      channelTitle,
-      thumbnailUrl
-    };
-    setCurrentVideo(videoFromPlaylist);
-    addToRecentlyPlayed(videoFromPlaylist);
+  const handlePlayFromPlaylist = (video: Video) => {
+    setCurrentVideo(video);
+    addToRecentlyPlayed(video);
     setMiniPlayerMode(true);
-  };
-
-  const handleGenreSelect = (genre: string) => {
-    setSelectedGenre(genre);
-    searchVideos(genre);
   };
 
   const navigateTo = (screen: 'home' | 'offline' | 'playlists') => {
@@ -206,13 +195,8 @@ function App() {
           <div className="container mx-auto px-4 text-center">
             <h2 className="text-2xl font-bold text-white mb-6">Find Your Favorite Music</h2>
             <div className="mx-auto max-w-xl mb-6">
-              <SearchBar onSearch={searchVideos} isLoading={isLoading} />
+              <SearchBar onSearch={searchMusic} isLoading={isLoading} />
             </div>
-            <GenreMenu 
-              genres={genres}
-              selectedGenre={selectedGenre}
-              onGenreSelect={handleGenreSelect}
-            />
           </div>
         </section>
       )}
@@ -243,12 +227,6 @@ function App() {
               <div className="p-4 mb-6 bg-red-50 text-red-700 rounded-lg dark:bg-red-900/30 dark:text-red-300">
                 {error}
               </div>
-            )}
-            
-            {selectedGenre && (
-              <h2 className="text-xl font-semibold mb-6 text-gray-800 dark:text-gray-200">
-                {selectedGenre} Tracks
-              </h2>
             )}
             
             {/* Video Grid */}
@@ -283,7 +261,6 @@ function App() {
       {currentVideo && (
         <VideoPlayer
           video={currentVideo}
-          onClose={() => setCurrentVideo(null)}
           onNext={currentVideoIndex < results.length - 1 ? handleNextVideo : undefined}
           onPrevious={currentVideoIndex > 0 ? handlePreviousVideo : undefined}
           onAddToFavorites={handleAddToFavorites}
@@ -316,6 +293,9 @@ function App() {
         onClose={() => setShowAuthModal(false)}
         onSignIn={signIn}
         onSignUp={signUp}
+        onSignInWithProvider={signInWithProvider}
+        onResetPassword={resetPassword}
+        verificationSent={verificationSent}
       />
 
       {/* Profile Modal */}
@@ -324,7 +304,7 @@ function App() {
           isOpen={showProfileModal}
           onClose={() => setShowProfileModal(false)}
           email={user.email!}
-          username={profile?.username || ''}
+          profile={profile}
           onUpdateProfile={updateProfile}
           onUpdatePassword={updatePassword}
         />

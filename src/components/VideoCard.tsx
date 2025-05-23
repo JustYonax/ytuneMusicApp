@@ -5,7 +5,7 @@ import { Play, Plus } from 'lucide-react';
 interface VideoCardProps {
   video: Video;
   onPlay: (video: Video) => void;
-  onAddToPlaylist: (video: Video) => void;
+  onAddToPlaylist: () => void;
 }
 
 const VideoCard: React.FC<VideoCardProps> = ({ video, onPlay, onAddToPlaylist }) => {
@@ -22,14 +22,14 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onPlay, onAddToPlaylist })
           <button
             onClick={() => onPlay(video)}
             className="p-3 bg-purple-600 rounded-full mr-3 transform hover:scale-110 transition-transform"
-            aria-label="Play video"
+            title={`Play ${video.title}`}
           >
             <Play size={20} className="text-white" />
           </button>
           <button
-            onClick={() => onAddToPlaylist(video)}
+            onClick={onAddToPlaylist}
             className="p-3 bg-gray-700 rounded-full transform hover:scale-110 transition-transform"
-            aria-label="Add to playlist"
+            title={`Add ${video.title} to playlist`}
           >
             <Plus size={20} className="text-white" />
           </button>
@@ -37,7 +37,12 @@ const VideoCard: React.FC<VideoCardProps> = ({ video, onPlay, onAddToPlaylist })
       </div>
       <div className="p-4">
         <h3 className="font-medium text-sm line-clamp-2 mb-1 dark:text-white">{video.title}</h3>
-        <p className="text-xs text-gray-500 dark:text-gray-400">{video.channelTitle}</p>
+        <p className="text-xs text-gray-500 dark:text-gray-400">{video.artist}</p>
+        {video.duration && (
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+            {Math.floor(video.duration / 60)}:{(video.duration % 60).toString().padStart(2, '0')}
+          </p>
+        )}
       </div>
     </div>
   );
