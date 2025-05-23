@@ -54,7 +54,7 @@ function App() {
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
-  const [miniPlayerMode, setMiniPlayerMode] = useState(false);
+  const [miniPlayerMode, setMiniPlayerMode] = useState(true);
   const [showOfflineMusic, setShowOfflineMusic] = useState(false);
   const [showPlaylistScreen, setShowPlaylistScreen] = useState(false);
   const [currentScreen, setCurrentScreen] = useState<'home' | 'offline' | 'playlists'>('home');

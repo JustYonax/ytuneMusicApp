@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import YouTube from 'react-youtube';
 import { Video } from '../types';
 import { 
-  Volume2, VolumeX, Minimize2, Maximize2,
+  Volume2, VolumeX, Maximize2,
   SkipBack, SkipForward, Pause, Play, 
   Heart, ListPlus, Download
 } from 'lucide-react';
@@ -25,7 +25,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   onPrevious, 
   onAddToFavorites,
   onAddToPlaylist,
-  miniMode = false,
+  miniMode = true,
   onToggleMiniMode
 }) => {
   const [player, setPlayer] = useState<any>(null);
@@ -144,11 +144,9 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
 
   return (
     <div 
-      className={`${
-        miniMode 
-          ? 'fixed bottom-0 left-0 right-0 bg-gray-900 shadow-lg z-50'
-          : 'w-full max-w-xl mx-auto bg-gray-900 rounded-lg overflow-hidden'
-      } transition-all duration-300`}
+      className={`fixed bottom-0 left-0 right-0 bg-gray-900 shadow-lg z-50 transition-all duration-300 ${
+        !miniMode ? 'h-96' : ''
+      }`}
     >
       <div className="hidden">
         <YouTube
@@ -260,7 +258,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onClick={onToggleMiniMode}
             className="p-2 hover:bg-gray-800 rounded-full transition-colors"
           >
-            {miniMode ? <Maximize2 size={18} /> : <Minimize2 size={20} />}
+            <Maximize2 size={18} />
           </button>
         </div>
       </div>
