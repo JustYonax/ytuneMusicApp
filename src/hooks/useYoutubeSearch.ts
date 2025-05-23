@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Video } from '../types';
 
-const API_KEY: string = 'AIzaSyByxwG0HJLFWsrDxIe9cepm6SKX0_yvyOE';
+const API_KEY: string = 'AIzaSyBxy-z9m96ravBRNwlGDH0Rh0tT8J4TjAM';
 const CACHE_NAME = 'youtube-search-cache';
 const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
