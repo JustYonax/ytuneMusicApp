@@ -53,6 +53,7 @@ function App() {
   } = useAuth();
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState<number>(-1);
   const [isPlaylistOpen, setIsPlaylistOpen] = useState(false);
   const [miniPlayerMode, setMiniPlayerMode] = useState(true);
   const [showOfflineMusic, setShowOfflineMusic] = useState(false);
@@ -63,8 +64,28 @@ function App() {
 
   const handlePlayVideo = (video: Video) => {
     setCurrentVideo(video);
+    const index = results.findIndex(v => v.id === video.id);
+    setCurrentVideoIndex(index);
     addToRecentlyPlayed(video);
     setMiniPlayerMode(true);
+  };
+
+  const handleNextVideo = () => {
+    if (currentVideoIndex < results.length - 1) {
+      const nextVideo = results[currentVideoIndex + 1];
+      setCurrentVideo(nextVideo);
+      setCurrentVideoIndex(currentVideoIndex + 1);
+      addToRecentlyPlayed(nextVideo);
+    }
+  };
+
+  const handlePreviousVideo = () => {
+    if (currentVideoIndex > 0) {
+      const previousVideo = results[currentVideoIndex - 1];
+      setCurrentVideo(previousVideo);
+      setCurrentVideoIndex(currentVideoIndex - 1);
+      addToRecentlyPlayed(previousVideo);
+    }
   };
 
   const handleAddToFavorites = (video: Video) => {
@@ -263,6 +284,8 @@ function App() {
         <VideoPlayer
           video={currentVideo}
           onClose={() => setCurrentVideo(null)}
+          onNext={currentVideoIndex < results.length - 1 ? handleNextVideo : undefined}
+          onPrevious={currentVideoIndex > 0 ? handlePreviousVideo : undefined}
           onAddToFavorites={handleAddToFavorites}
           onAddToPlaylist={() => {
             if (handleAuthAction('playlist')) {
