@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import YouTube from 'react-youtube';
+import YouTube, { YouTubeEvent, YouTubePlayer } from 'react-youtube';
 import { Video } from '../types';
 import { 
   Volume2, VolumeX, Maximize2,
   SkipBack, SkipForward, Pause, Play, 
-  Heart, ListPlus, Download
+  Heart, ListPlus, Download,
+  Shuffle, Repeat, X
 } from 'lucide-react';
+import { cacheManager } from '../utils/cacheManager';
 
 interface VideoPlayerProps {
   video: Video | null;
@@ -18,6 +20,8 @@ interface VideoPlayerProps {
   onToggleMiniMode: () => void;
 }
 
+type RepeatMode = 'none' | 'one' | 'all';
+
 const VideoPlayer: React.FC<VideoPlayerProps> = ({ 
   video, 
   onClose, 
@@ -28,45 +32,69 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   miniMode = true,
   onToggleMiniMode
 }) => {
-  const [player, setPlayer] = useState<any>(null);
+  const [player, setPlayer] = useState<YouTubePlayer | null>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [volume, setVolume] = useState(80);
   const [elapsed, setElapsed] = useState(0);
   const [duration, setDuration] = useState(0);
-  const [isDownloaded, setIsDownloaded] = useState(false);
+  const [cacheStatus, setCacheStatus] = useState<'cached' | 'caching' | 'error' | null>(null);
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [isShuffleOn, setIsShuffleOn] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>('none');
 
   useEffect(() => {
     setIsPlaying(true);
     setElapsed(0);
-    checkIfDownloaded();
+    checkCacheStatus();
   }, [video]);
 
-  const checkIfDownloaded = async () => {
+  const checkCacheStatus = async () => {
     if (!video) return;
-    const cache = await caches.open('music-cache');
-    const response = await cache.match(`music-${video.id}`);
-    setIsDownloaded(!!response);
+    const status = await cacheManager.getCacheStatus(video.id);
+    setCacheStatus(status);
   };
 
   const handleDownload = async () => {
     if (!video) return;
     try {
-      const cache = await caches.open('music-cache');
-      await cache.put(`music-${video.id}`, new Response(JSON.stringify({
-        ...video,
-        timestamp: Date.now()
-      })));
-      setIsDownloaded(true);
+      setCacheStatus('caching');
+      const success = await cacheManager.addToCache(video);
+      setCacheStatus(success ? 'cached' : 'error');
     } catch (err) {
       console.error('Error caching music:', err);
+      setCacheStatus('error');
+    }
+  };
+
+  const toggleShuffle = () => {
+    setIsShuffleOn(!isShuffleOn);
+  };
+
+  const toggleRepeat = () => {
+    setRepeatMode(current => {
+      switch (current) {
+        case 'none': return 'all';
+        case 'all': return 'one';
+        case 'one': return 'none';
+      }
+    });
+  };
+
+  const handleVideoEnd = () => {
+    if (repeatMode === 'one' && player) {
+      player.seekTo(0);
+      player.playVideo();
+    } else if (repeatMode === 'all' && onNext) {
+      onNext();
+    } else if (onNext) {
+      onNext();
     }
   };
 
   if (!video) return null;
 
-  const handleReady = (event: any) => {
+  const handleReady = (event: YouTubeEvent) => {
     setPlayer(event.target);
     setDuration(event.target.getDuration());
     
@@ -86,7 +114,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
       } else {
         player.playVideo();
       }
-      setIsPlaying(!isPlaying);
     }
   };
 
@@ -103,31 +130,11 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newVolume = parseInt(e.target.value);
+    const newVolume = Number(e.target.value);
     setVolume(newVolume);
-    if (player) {
+    if (player && !isMuted) {
       player.setVolume(newVolume);
-      if (newVolume === 0) {
-        setIsMuted(true);
-      } else if (isMuted) {
-        player.unMute();
-        setIsMuted(false);
-      }
     }
-  };
-
-  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const seekTo = parseInt(e.target.value);
-    setElapsed(seekTo);
-    if (player) {
-      player.seekTo(seekTo);
-    }
-  };
-
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
   };
 
   const playerOptions = {
@@ -153,34 +160,44 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           videoId={video.id}
           opts={playerOptions}
           onReady={handleReady}
-          onStateChange={(e) => setIsPlaying(e.data === 1)}
+          onStateChange={(e: YouTubeEvent) => setIsPlaying(e.data === 1)}
+          onEnd={handleVideoEnd}
         />
       </div>
       
       <div className={`flex items-center ${miniMode ? 'p-2' : 'p-4'} text-white`}>
-        {/* Thumbnail and Title */}
-        <div className="flex items-center flex-1 min-w-0">
+        {/* Video Info */}
+        <div className="flex items-center space-x-4 flex-1">
           <img 
             src={video.thumbnailUrl} 
             alt={video.title}
-            className={`${miniMode ? 'w-12 h-12' : 'w-16 h-16'} object-cover rounded`}
+            className="w-16 h-16 object-cover rounded"
           />
-          <div className="ml-3 flex-1 min-w-0">
-            <h3 className={`font-medium ${miniMode ? 'text-sm' : 'text-base'} truncate`}>
-              {video.title}
-            </h3>
-            <p className={`${miniMode ? 'text-xs' : 'text-sm'} text-gray-400 truncate`}>
-              {video.channelTitle}
-            </p>
+          <div>
+            <h3 className="font-medium">{video.title}</h3>
+            <p className="text-sm text-gray-400">{video.channelTitle}</p>
           </div>
         </div>
 
         {/* Controls */}
         <div className="flex items-center space-x-4">
+          <button
+            onClick={toggleShuffle}
+            className={`p-2 rounded-full transition-colors ${
+              isShuffleOn ? 'text-purple-500 hover:bg-purple-900/20' : 'hover:bg-gray-800'
+            }`}
+            title={isShuffleOn ? 'Shuffle On' : 'Shuffle Off'}
+            aria-label={isShuffleOn ? 'Disable shuffle' : 'Enable shuffle'}
+          >
+            <Shuffle size={miniMode ? 18 : 20} />
+          </button>
+
           {onPrevious && (
             <button 
               onClick={onPrevious}
               className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title="Previous"
+              aria-label="Play previous track"
             >
               <SkipBack size={miniMode ? 18 : 20} />
             </button>
@@ -189,6 +206,8 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
           <button 
             onClick={togglePlay}
             className="p-3 bg-purple-600 rounded-full hover:bg-purple-700 transition-colors"
+            title={isPlaying ? 'Pause' : 'Play'}
+            aria-label={isPlaying ? 'Pause playback' : 'Start playback'}
           >
             {isPlaying ? <Pause size={miniMode ? 18 : 20} /> : <Play size={miniMode ? 18 : 20} />}
           </button>
@@ -197,10 +216,34 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             <button 
               onClick={onNext}
               className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title="Next"
+              aria-label="Play next track"
             >
               <SkipForward size={miniMode ? 18 : 20} />
             </button>
           )}
+
+          <button
+            onClick={toggleRepeat}
+            className={`p-2 rounded-full transition-colors ${
+              repeatMode !== 'none' ? 'text-purple-500 hover:bg-purple-900/20' : 'hover:bg-gray-800'
+            }`}
+            title={
+              repeatMode === 'none' ? 'Repeat Off' :
+              repeatMode === 'all' ? 'Repeat All' :
+              'Repeat One'
+            }
+            aria-label={
+              repeatMode === 'none' ? 'Enable repeat' :
+              repeatMode === 'all' ? 'Enable repeat one' :
+              'Disable repeat'
+            }
+          >
+            <Repeat size={miniMode ? 18 : 20} />
+            {repeatMode === 'one' && (
+              <span className="absolute -top-1 -right-1 w-2 h-2 bg-purple-500 rounded-full" />
+            )}
+          </button>
 
           {/* Volume Control */}
           <div 
@@ -208,14 +251,17 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
             onMouseEnter={() => setShowVolumeSlider(true)}
             onMouseLeave={() => setShowVolumeSlider(false)}
           >
-            <button 
+            <button
               onClick={toggleMute}
               className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title={isMuted ? 'Unmute' : 'Mute'}
+              aria-label={isMuted ? 'Unmute audio' : 'Mute audio'}
             >
               {isMuted ? <VolumeX size={miniMode ? 18 : 20} /> : <Volume2 size={miniMode ? 18 : 20} />}
             </button>
+            
             {showVolumeSlider && (
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 p-2 bg-gray-800 rounded-lg shadow-lg">
+              <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 bg-gray-800 p-2 rounded-lg">
                 <input
                   type="range"
                   min="0"
@@ -223,66 +269,81 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({
                   value={volume}
                   onChange={handleVolumeChange}
                   className="w-24 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500"
+                  title="Volume"
+                  aria-label="Adjust volume"
                 />
               </div>
             )}
           </div>
 
-          {/* Additional Controls */}
-          <button 
-            onClick={() => video && onAddToFavorites(video)}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <Heart size={miniMode ? 18 : 20} />
-          </button>
-          
-          <button 
-            onClick={() => video && onAddToPlaylist(video)}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <ListPlus size={miniMode ? 18 : 20} />
-          </button>
+          {/* Action Buttons */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => onAddToFavorites(video)}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title="Add to Favorites"
+              aria-label="Add to favorites"
+            >
+              <Heart size={miniMode ? 18 : 20} />
+            </button>
 
-          <button
-            onClick={handleDownload}
-            className={`p-2 rounded-full transition-colors ${
-              isDownloaded 
-                ? 'text-green-500 hover:bg-green-900/20' 
-                : 'hover:bg-gray-800'
-            }`}
-          >
-            <Download size={miniMode ? 18 : 20} />
-          </button>
+            <button
+              onClick={() => onAddToPlaylist(video)}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title="Add to Playlist"
+              aria-label="Add to playlist"
+            >
+              <ListPlus size={miniMode ? 18 : 20} />
+            </button>
 
-          <button 
-            onClick={onToggleMiniMode}
-            className="p-2 hover:bg-gray-800 rounded-full transition-colors"
-          >
-            <Maximize2 size={18} />
-          </button>
+            <button
+              onClick={handleDownload}
+              className={`p-2 rounded-full transition-colors ${
+                cacheStatus === 'cached' ? 'text-purple-500' : 'hover:bg-gray-800'
+              }`}
+              title={
+                cacheStatus === 'cached' ? 'Cached' :
+                cacheStatus === 'caching' ? 'Caching...' :
+                cacheStatus === 'error' ? 'Error caching' :
+                'Cache for offline'
+              }
+              aria-label={
+                cacheStatus === 'cached' ? 'Remove from cache' :
+                cacheStatus === 'caching' ? 'Caching in progress' :
+                cacheStatus === 'error' ? 'Retry caching' :
+                'Cache for offline'
+              }
+            >
+              <Download size={miniMode ? 18 : 20} />
+            </button>
+
+            <button
+              onClick={onToggleMiniMode}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title={miniMode ? 'Maximize' : 'Minimize'}
+              aria-label={miniMode ? 'Maximize player' : 'Minimize player'}
+            >
+              <Maximize2 size={miniMode ? 18 : 20} />
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-gray-800 rounded-full transition-colors"
+              title="Close player"
+              aria-label="Close player"
+            >
+              <X size={miniMode ? 18 : 20} />
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Progress Bar */}
-      <div className="px-4 pb-2">
-        <div className="relative group">
-          <input
-            type="range"
-            min="0"
-            max={duration}
-            value={elapsed}
-            onChange={handleSeek}
-            className="w-full h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer accent-purple-500 hover:accent-purple-400"
-          />
-          <div 
-            className="absolute left-0 bottom-0 h-1 bg-purple-500 rounded-lg pointer-events-none"
-            style={{ width: `${(elapsed / duration) * 100}%` }}
-          />
-        </div>
-        <div className="flex justify-between mt-1 text-xs text-gray-400">
-          <span>{formatTime(elapsed)}</span>
-          <span>{formatTime(duration)}</span>
-        </div>
+      <div className="w-full h-1 bg-gray-700">
+        <div 
+          className="h-full bg-purple-600 transition-all duration-200"
+          style={{ width: `${(elapsed / duration) * 100}%` }}
+        />
       </div>
     </div>
   );

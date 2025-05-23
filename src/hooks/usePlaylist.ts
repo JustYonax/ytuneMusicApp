@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Playlist, PlaylistItem, Video } from '../types';
+import { cacheManager } from '../utils/cacheManager';
 
 export function usePlaylist() {
   const [playlists, setPlaylists] = useState<Playlist[]>(() => {
@@ -17,7 +18,7 @@ export function usePlaylist() {
       },
       {
         id: 'offline',
-        name: 'Downloaded',
+        name: 'Cached',
         items: []
       }
     ];
@@ -70,15 +71,7 @@ export function usePlaylist() {
 
     // If adding to offline playlist, cache the video
     if (playlistId === 'offline') {
-      try {
-        const cache = await caches.open('music-cache');
-        await cache.put(`music-${video.id}`, new Response(JSON.stringify({
-          ...video,
-          timestamp: Date.now()
-        })));
-      } catch (err) {
-        console.error('Error caching music:', err);
-      }
+      await cacheManager.addToCache(video);
     }
   };
 
@@ -98,12 +91,7 @@ export function usePlaylist() {
 
     // If removing from offline playlist, remove from cache
     if (playlistId === 'offline' && item) {
-      try {
-        const cache = await caches.open('music-cache');
-        await cache.delete(`music-${item.videoId}`);
-      } catch (err) {
-        console.error('Error removing from cache:', err);
-      }
+      await cacheManager.removeFromCache(item.videoId);
     }
   };
 
