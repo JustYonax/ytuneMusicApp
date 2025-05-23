@@ -60,6 +60,7 @@ const OfflineMusic: React.FC<OfflineMusicProps> = ({ playlist, onPlay, onRemove 
 
   const filteredAndSortedItems = cacheInfo.itemsList
     .filter(item => {
+      if (!item?.video?.title || !item?.video?.channelTitle) return false;
       const searchLower = searchQuery.toLowerCase();
       return (
         item.video.title.toLowerCase().includes(searchLower) ||
@@ -67,16 +68,17 @@ const OfflineMusic: React.FC<OfflineMusicProps> = ({ playlist, onPlay, onRemove 
       );
     })
     .sort((a, b) => {
+      if (!a?.video?.title || !b?.video?.title) return 0;
       let comparison = 0;
       switch (sortBy) {
         case 'date':
-          comparison = a.timestamp - b.timestamp;
+          comparison = (a.timestamp || 0) - (b.timestamp || 0);
           break;
         case 'title':
           comparison = a.video.title.localeCompare(b.video.title);
           break;
         case 'artist':
-          comparison = a.video.channelTitle.localeCompare(b.video.channelTitle);
+          comparison = (a.video.channelTitle || '').localeCompare(b.video.channelTitle || '');
           break;
       }
       return sortOrder === 'asc' ? comparison : -comparison;
