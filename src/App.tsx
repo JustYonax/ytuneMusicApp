@@ -49,7 +49,8 @@ function App() {
     signUp,
     signOut,
     updateProfile,
-    updatePassword
+    updatePassword,
+    updateSettings
   } = useAuth();
   
   const [currentVideo, setCurrentVideo] = useState<Video | null>(null);
@@ -325,8 +326,11 @@ function App() {
           onClose={() => setShowProfileModal(false)}
           email={user.email!}
           username={profile?.username || ''}
+          theme={profile?.settings?.theme || 'system'}
           onUpdateProfile={updateProfile}
           onUpdatePassword={updatePassword}
+          onUpdateTheme={(theme) => updateSettings({ theme })}
+          onSignOut={signOut}
         />
       )}
     </div>
