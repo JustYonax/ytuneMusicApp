@@ -28,7 +28,7 @@ export interface UserProfile {
 }
 
 export interface UserSettings {
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
   autoplay: boolean;
   quality: 'auto' | 'high' | 'medium' | 'low';
 }

@@ -7,7 +7,7 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
-    theme: 'light',
+    theme: 'system',
     autoplay: true,
     quality: 'auto'
   });
@@ -33,7 +33,7 @@ export function useAuth() {
       } else {
         setProfile(null);
         setSettings({
-          theme: 'light',
+          theme: 'system',
           autoplay: true,
           quality: 'auto'
         });
@@ -109,7 +109,7 @@ export function useAuth() {
         {
           user_id: authData.user.id,
           settings: {
-            theme: 'light',
+            theme: 'system',
             autoplay: true,
             quality: 'auto'
           }

@@ -1,33 +1,41 @@
-import React, { useEffect, useState } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import React from 'react';
+import { Sun, Moon, Monitor } from 'lucide-react';
 
-const ThemeToggle: React.FC = () => {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    // Check for saved theme preference or use system preference
-    const savedTheme = localStorage.getItem('theme');
-    return savedTheme 
-      ? savedTheme === 'dark'
-      : window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+interface ThemeToggleProps {
+  theme: 'light' | 'dark' | 'system';
+  onUpdateTheme: (theme: 'light' | 'dark' | 'system') => void;
+}
 
-  useEffect(() => {
-    // Update DOM when theme changes
-    if (isDarkMode) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+const ThemeToggle: React.FC<ThemeToggleProps> = ({ theme, onUpdateTheme }) => {
+  const getIcon = () => {
+    switch (theme) {
+      case 'light':
+        return <Sun size={18} />;
+      case 'dark':
+        return <Moon size={18} />;
+      case 'system':
+        return <Monitor size={18} />;
     }
-  }, [isDarkMode]);
+  };
+
+  const getNextTheme = () => {
+    switch (theme) {
+      case 'light':
+        return 'dark';
+      case 'dark':
+        return 'system';
+      case 'system':
+        return 'light';
+    }
+  };
 
   return (
     <button
-      onClick={() => setIsDarkMode(!isDarkMode)}
+      onClick={() => onUpdateTheme(getNextTheme())}
       className="p-2 rounded-full bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200 transition-colors"
-      aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={`Current theme: ${theme}. Click to change.`}
     >
-      {isDarkMode ? <Sun size={18} /> : <Moon size={18} />}
+      {getIcon()}
     </button>
   );
 };
