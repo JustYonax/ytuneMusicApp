@@ -63,7 +63,7 @@ export function useAuth() {
       .from('user_settings')
       .select('*')
       .eq('user_id', userId)
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error fetching user settings:', error);
@@ -72,6 +72,29 @@ export function useAuth() {
 
     if (data) {
       setSettings(data.settings);
+    } else {
+      // Initialize default settings if none exist
+      const defaultSettings = {
+        theme: 'system',
+        autoplay: true,
+        quality: 'auto'
+      };
+      
+      setSettings(defaultSettings);
+
+      // Create default settings in the database
+      const { error: insertError } = await supabase
+        .from('user_settings')
+        .insert([
+          {
+            user_id: userId,
+            settings: defaultSettings
+          }
+        ]);
+
+      if (insertError) {
+        console.error('Error creating default user settings:', insertError);
+      }
     }
   };
 
@@ -173,16 +196,18 @@ export function useAuth() {
   const updateSettings = async (newSettings: Partial<UserSettings>) => {
     if (!user) throw new Error('No user logged in');
 
+    const updatedSettings = { ...settings, ...newSettings };
+    setSettings(updatedSettings);
+
     const { error } = await supabase
       .from('user_settings')
       .update({
-        settings: { ...settings, ...newSettings },
+        settings: updatedSettings,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', user.id);
 
     if (error) throw error;
-    setSettings(prev => ({ ...prev, ...newSettings }));
   };
 
   return {

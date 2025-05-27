@@ -44,6 +44,7 @@ function App() {
   const {
     user,
     profile,
+    settings,
     loading: authLoading,
     signIn,
     signUp,
@@ -180,7 +181,10 @@ function App() {
             >
               <List size={18} />
             </button>
-            <ThemeToggle />
+            <ThemeToggle
+              theme={settings.theme}
+              onUpdateTheme={(theme) => updateSettings({ theme })}
+            />
             {user ? (
               <button
                 onClick={() => setShowProfileModal(true)}
@@ -326,7 +330,7 @@ function App() {
           onClose={() => setShowProfileModal(false)}
           email={user.email!}
           username={profile?.username || ''}
-          theme={profile?.settings?.theme || 'system'}
+          theme={settings.theme}
           onUpdateProfile={updateProfile}
           onUpdatePassword={updatePassword}
           onUpdateTheme={(theme) => updateSettings({ theme })}
