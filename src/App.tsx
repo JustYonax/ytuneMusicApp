@@ -12,6 +12,7 @@ import OfflineMusic from './components/OfflineMusic';
 import PlaylistScreen from './components/PlaylistScreen';
 import AuthModal from './components/AuthModal';
 import ProfileModal from './components/ProfileModal';
+import SubscriptionButton from './components/SubscriptionButton';
 
 // Hooks
 import { useYoutubeSearch } from './hooks/useYoutubeSearch';
@@ -185,6 +186,7 @@ function App() {
               theme={settings.theme}
               onUpdateTheme={(theme) => updateSettings({ theme })}
             />
+            <SubscriptionButton onAuthRequired={() => setShowAuthModal(true)} />
             {user ? (
               <button
                 onClick={() => setShowProfileModal(true)}
